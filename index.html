@@ -4,10 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Simple CV Maker</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
     body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      font-family: Arial, sans-serif;
       background-color: #f4f4f4;
       padding: 20px;
     }
@@ -44,14 +45,17 @@
       border-radius: 4px;
       cursor: pointer;
       margin-top: 10px;
+      margin-right: 5px;
     }
     button:hover {
       background: #0056b3;
     }
-    .preview {
+    .preview-wrapper {
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
       margin-top: 30px;
-      border-top: 1px solid #ddd;
-      padding-top: 20px;
     }
     .profile-section {
       display: flex;
@@ -75,13 +79,24 @@
     .project-entry a {
       color: #007BFF;
     }
-    .footer p {
+    .footer {
       text-align: center;
       padding: 20px;
       background: #f1f1f1;
       margin-top: 40px;
       font-size: 14px;
       color: #555;
+    }
+    #cvPreview {
+      background: white;
+      padding: 20px;
+      color: #333;
+    }
+    #statusMessage {
+      color: #007BFF;
+      font-weight: bold;
+      margin-top: 10px;
+      display: none;
     }
   </style>
 </head>
@@ -102,13 +117,13 @@
     <textarea id="objective" placeholder="Write your career objective..."></textarea>
 
     <h2>Academic Qualification</h2>
-    <textarea id="education" placeholder="e.g. Bachelor of Science in Computer Science, University XYZ (2018 - 2022)"></textarea>
+    <textarea id="education" placeholder="e.g. Bachelor of Technology in Computer Science Class 12 (Science) - 2021-2022"></textarea>
 
     <h2>Work Experience (Internships)</h2>
-    <textarea id="experience" placeholder="e.g. Internship at XYZ Company - Assisted in software development and testing"></textarea>
+    <textarea id="experience" placeholder="e.g. Software Development Intern at XYZ Company - Developed web applications using JavaScript and React"></textarea>
 
     <h2>Projects</h2>
-    <textarea id="projects" placeholder="e.g. Project Management Tool - A web-based application for managing projects and tasks [https://example.com/project-management]"></textarea>
+    <textarea id="projects" placeholder=" e.g. Web Application for Task Management - A project to manage tasks with features like assignment, deadlines, and notifications"></textarea>
 
     <h2>Skills</h2>
     <textarea id="skills" placeholder="List your skills..."></textarea>
@@ -124,15 +139,19 @@
 
     <button onclick="generateCV()">Generate CV Preview</button>
     <button onclick="downloadPDF()">Download CV as PDF</button>
+    <div id="statusMessage">Generating PDF, please wait...</div>
 
-    <div class="preview" id="cvPreview"></div>
-    <footer class="footer">
-      <p>made by @himangshuuuu._</p>
-    </footer>
-    
+    <div class="preview-wrapper">
+      <div class="preview" id="cvPreview"></div>
+    </div>
   </div>
 
+  <footer class="footer">
+    <p>made by @himangshuuuu._</p>
+  </footer>
+
   <script>
+    const { jsPDF } = window.jspdf;
     let profileImgData = "";
 
     document.getElementById('profilePicInput').addEventListener('change', function(event) {
@@ -140,6 +159,7 @@
       const reader = new FileReader();
       reader.onloadend = function() {
         profileImgData = reader.result;
+        generateCV();
       };
       if (file) {
         reader.readAsDataURL(file);
@@ -203,15 +223,58 @@
     }
 
     function downloadPDF() {
-      const element = document.getElementById("cvPreview");
-      html2pdf().set({
-        margin: 0.5,
-        filename: 'simple_cv.pdf',
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
-      }).from(element).save();
+      generateCV();
+
+      const statusMessage = document.getElementById('statusMessage');
+      statusMessage.style.display = 'block';
+      const element = document.getElementById('cvPreview');
+
+      if (!element.innerHTML.trim()) {
+        alert("Please generate your CV first before downloading");
+        statusMessage.style.display = 'none';
+        return;
+      }
+
+      html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        onclone: function(clonedDoc) {
+          const clonedElement = clonedDoc.getElementById('cvPreview');
+          clonedElement.style.width = '210mm';
+          clonedElement.style.padding = '20px';
+          clonedElement.style.background = 'white';
+        }
+      }).then(function(canvas) {
+        const imgData = canvas.toDataURL('image/jpeg');
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const imgWidth = 210;
+        const pageHeight = 297;
+        const imgHeight = canvas.height * imgWidth / canvas.width;
+        let heightLeft = imgHeight;
+        let position = 0;
+
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+
+        while (heightLeft >= 0) {
+          position = heightLeft - imgHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+          heightLeft -= pageHeight;
+        }
+
+        pdf.save('my_cv.pdf');
+        statusMessage.style.display = 'none';
+      }).catch(function(error) {
+        console.error('Error generating PDF:', error);
+        alert('Error generating PDF. Please try again.');
+        statusMessage.style.display = 'none';
+      });
     }
+
+    const inputs = document.querySelectorAll('input, textarea');
+    inputs.forEach(input => input.addEventListener('input', generateCV));
   </script>
 </body>
 </html>
