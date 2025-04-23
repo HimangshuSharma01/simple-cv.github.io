@@ -48,7 +48,7 @@
       margin-right: 5px;
     }
     button:hover {
-      background: #0056b2;
+      background: #0056b3;
     }
     .preview-wrapper {
       background: #fff;
@@ -117,13 +117,13 @@
     <textarea id="objective" placeholder="Write your career objective..."></textarea>
 
     <h2>Academic Qualification</h2>
-    <textarea id="education" placeholder="e.g. Bachelor of Technology in Computer Science Class 12 (Science) - 2021-2022"></textarea>
+    <textarea id="education" placeholder="e.g. B.Tech in IT - 2023-2027&#10;Class 12 (Science) - 2021-2023"></textarea>
 
     <h2>Work Experience (Internships)</h2>
-    <textarea id="experience" placeholder="e.g. Software Development Intern at XYZ Company - Developed web applications using JavaScript and React"></textarea>
+    <textarea id="experience" placeholder="e.g. Database Intern - Anmol Pharmacy (Nov 2023 - Feb 2024)"></textarea>
 
     <h2>Projects</h2>
-    <textarea id="projects" placeholder=" e.g. Web Application for Task Management - A project to manage tasks with features like assignment, deadlines, and notifications"></textarea>
+    <textarea id="projects" placeholder="e.g. Electric Piano - An electronic project from ATAL Lab [https://project-link.com]&#10;Air to Water Converter - Converts humidity to drinking water [https://converter-link.com]"></textarea>
 
     <h2>Skills</h2>
     <textarea id="skills" placeholder="List your skills..."></textarea>
@@ -151,6 +151,7 @@
   </footer>
 
   <script>
+    // Use the window.jspdf from the CDN
     const { jsPDF } = window.jspdf;
     let profileImgData = "";
 
@@ -159,7 +160,6 @@
       const reader = new FileReader();
       reader.onloadend = function() {
         profileImgData = reader.result;
-        generateCV();
       };
       if (file) {
         reader.readAsDataURL(file);
@@ -223,22 +223,29 @@
     }
 
     function downloadPDF() {
+      // Make sure the CV is generated
       generateCV();
-
+      
+      // Show status message
       const statusMessage = document.getElementById('statusMessage');
       statusMessage.style.display = 'block';
+      
+      // Get the element to convert
       const element = document.getElementById('cvPreview');
-
+      
+      // First, make sure the element is visible and has content
       if (!element.innerHTML.trim()) {
         alert("Please generate your CV first before downloading");
         statusMessage.style.display = 'none';
         return;
       }
-
+      
+      // Use html2canvas directly
       html2canvas(element, {
         scale: 2,
         useCORS: true,
         backgroundColor: '#ffffff',
+        logging: true,
         onclone: function(clonedDoc) {
           const clonedElement = clonedDoc.getElementById('cvPreview');
           clonedElement.style.width = '210mm';
@@ -246,10 +253,11 @@
           clonedElement.style.background = 'white';
         }
       }).then(function(canvas) {
+        // Convert canvas to PDF
         const imgData = canvas.toDataURL('image/jpeg');
         const pdf = new jsPDF('p', 'mm', 'a4');
-        const imgWidth = 210;
-        const pageHeight = 297;
+        const imgWidth = 210; // A4 width in mm
+        const pageHeight = 297; // A4 height in mm
         const imgHeight = canvas.height * imgWidth / canvas.width;
         let heightLeft = imgHeight;
         let position = 0;
@@ -257,14 +265,18 @@
         pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
         heightLeft -= pageHeight;
 
+        // Add new pages if the content is longer than one page
         while (heightLeft >= 0) {
           position = heightLeft - imgHeight;
           pdf.addPage();
           pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
           heightLeft -= pageHeight;
         }
-
+        
+        // Save the PDF
         pdf.save('my_cv.pdf');
+        
+        // Hide status message
         statusMessage.style.display = 'none';
       }).catch(function(error) {
         console.error('Error generating PDF:', error);
@@ -272,9 +284,6 @@
         statusMessage.style.display = 'none';
       });
     }
-
-    const inputs = document.querySelectorAll('input, textarea');
-    inputs.forEach(input => input.addEventListener('input', generateCV));
   </script>
 </body>
 </html>
